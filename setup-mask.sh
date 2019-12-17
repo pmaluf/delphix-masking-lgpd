@@ -8,15 +8,16 @@
 #   masking_setup.sh --help
 #
 #    Parameter             Short Description                                                        Default
-#    --------------------- ----- ------------------------------------------------------------------ --------------
+#    --------------------- ----- ------------------------------------------------------------------ ---------------
 #    --profile-name           -p Profile name
-#    --expressions-file       -e CSV file like ExpressionName;DomainName;level;Regex                expressions.cfg
-#    --domains-file           -d CSV file like Domain Name;Classification;Algorithm                 domains.cfg
+#    --expressions-file       -e Delimiter file like: ExpressionName;DomainName;level;Regex         expressions.cfg               
+#    --domains-file           -d Delimiter file like: Domain Name;Classification;Algorithm          domains.cfg 
+#    --connection-file        -c Delimiter file like: connectorName;databaseType;environmentId;     connections.cfg
+#    --ruleset-file           -r Delimiter file like: rulesetName;connectorName                     ruleset.cfg
 #    --masking-engine         -m Masking Engine Address
-#    --create-connection      -c Create environment connection
 #    --help                   -h help
 #
-#   Ex.: masking_setup.sh --profile-name LGPD -e ./expressions.csv -d domains.cfg -m 172.168.8.128
+#   Ex.: masking_setup.sh --profile-name LGPD -e ./expressions.csv -d ./domains.cfg -c ./connections.cfg -m 172.168.8.128
 #
 # Changelog:
 #
@@ -69,7 +70,8 @@ LOGIN_RESPONSE=$(curl -s -X POST -H 'Content-Type: application/json' -H 'Accept:
     "username": "$USERNAME",
     "password": "$PASSWORD"
 }
-EOF )
+EOF
+)
     check_error "$LOGIN_RESPONSE"
     TOKEN=$(echo $LOGIN_RESPONSE | jq -r '.Authorization')
     AUTH_HEADER="Authorization: $TOKEN"
@@ -117,6 +119,74 @@ curl -s -X POST -H ''"${AUTH_HEADER}"'' -H 'Content-Type: application/json' -H '
 EOF
 }
 
+create_connection(){
+CONNECTORNAME=${1}
+DATABASETYPE=${2}
+ENVIRONMENTID=${3}
+HOST=${4}
+PASSWORD=${5}
+PORT=${6}
+SCHEMANAME=${7}
+SID=${8}
+USERNAME=${9}
+
+curl -s -X POST -H ''"${AUTH_HEADER}"'' -H 'Content-Type: application/json' -H 'Accept: application/json' --data @- ${MASKING_ENGINE}/database-connectors <<EOF
+{
+  "connectorName": "${CONNECTORNAME}",
+  "databaseType": "${DATABASETYPE}",
+  "environmentId": ${ENVIRONMENTID},
+  "host": "${HOST}",
+  "password": "${PASSWORD}",
+  "port": ${PORT},
+  "schemaName": "${SCHEMANAME}",
+  "sid": "${SID}",
+  "username": "${USERNAME}"
+}
+EOF
+}
+
+get_connectorid(){
+CONNECTORNAME=${1}
+
+CONNECTORLIST=$(curl -s -X GET -H ''"${AUTH_HEADER}"'' -H 'Content-Type: application/json' -H 'Accept: application/json' ${MASKING_ENGINE}/database-connectors)
+CONNECTORID=$(echo ${CONNECTORLIST} | jq -r ".responseList[] | select(.connectorName == "${CONNECTORNAME}") | .databaseConnectorId")
+
+echo ${CONNECTORID}
+}
+
+create_ruleset(){
+RULESETNAME=${1}
+DATABASECONNECTORID=${2}
+
+RET=$(curl -s -X POST -H ''"${AUTH_HEADER}"'' -H 'Content-Type: application/json' -H 'Accept: application/json' --data @- ${MASKING_ENGINE}/database-rulesets <<EOF
+{
+  "rulesetName": "${RULESETNAME}",
+  "databaseConnectorId": ${DATABASECONNECTORID}
+}
+EOF
+)
+
+RESULTSETID=$(echo ${RET} | jq -r '.databaseRulesetId')
+echo ${RESULTSETID}
+
+}
+
+ruleset_bulkupdate(){
+RULESETID=${1}
+
+curl -s -X PUT -H ''"${AUTH_HEADER}"'' -H 'Content-Type: application/json' -H 'Accept: application/json' --data @- ${MASKING_ENGINE}/database-rulesets/${RULESETID}/bulk-table-update <<EOF
+{
+  "tableMetadata": [
+    {
+      "tableName": "*",
+      "rulesetId": ${RULESETID}
+    }
+  ]
+}
+EOF
+
+}
+
 ################################
 # ARGPARSER                    #
 ################################
@@ -135,6 +205,8 @@ do
       --profile-name)         args="${args}-p ";;
       --expressions-file)     args="${args}-e ";;
       --domains-file)         args="${args}-d ";;
+      --connection-file)      args="${args}-c ";;
+      --ruleset-file)         args="${args}-r ";;
       --masking-engine)       args="${args}-m ";;
       --help)                 args="${args}-h ";;
       #pass through anything else
@@ -145,13 +217,15 @@ done
 
 eval set -- $args
 
-while getopts ":hp:e:d:m:" PARAMETRO
+while getopts ":hp:e:d:m:c:r:" PARAMETRO
 do
     case $PARAMETRO in
         h) help;;
         p) PROFILENAME=${OPTARG[@]};;
         e) EXPRESSFILE=${OPTARG[@]};;
         d) DOMAINSFILE=${OPTARG[@]};;
+        c) CONNECTIONFILE=${OPTARG[@]};;
+        r) RULESETFILE=${OPTARG[@]};;
         m) MASKING_ENGINE=${OPTARG[@]};;
         :) echo "Option -$OPTARG requires an argument."; exit 1;;
         *) echo $OPTARG is an unrecognized option ; echo $USAGE; exit 1;;
@@ -168,6 +242,20 @@ if [ -e ${EXPRESSFILE} ] && [ -e ${DOMAINSFILE} ] && [ ${MASKING_ENGINE} ]
     
     # Login on Masking Engine
     login
+
+    # Create connection environment
+    if [ -e ${CONNECTIONFILE} ]
+      then
+        log "** creating connection environment ${CONNECTORNAME}...\n"
+        while IFS=\; read -r CONNECTORNAME DATABASETYPE ENVIRONMENTID HOST PASSWORD PORT SCHEMANAME SID USERNAME
+        do
+          if [[ ! ${CONNECTORNAME} =~ "#" ]]
+            then
+              log "* ${CONNECTORNAME}\n"
+              ret=$(create_connection ${CONNECTORNAME} ${DATABASETYPE} ${ENVIRONMENTID} ${HOST} ${PASSWORD} ${PORT} ${SCHEMANAME} ${SID} ${USERNAME})
+          fi
+        done < ${CONNECTIONFILE}
+    fi
 
     # Create Domains 
     log "** creating domain ${NEW_DOMAIN}...\n"
@@ -208,4 +296,24 @@ if [ -e ${EXPRESSFILE} ] && [ -e ${DOMAINSFILE} ] && [ ${MASKING_ENGINE} ]
 
     # remove tmpfile
     rm -f $$.tmp
+    
+    # Create RuleSet 
+    if [ -e ${RULESETFILE} ]
+      then
+        log "* creating ruleset ${RULESETNAME}...\n"
+        while IFS=\; read -r RULESETNAME CONNECTORNAME
+        do
+          if [[ ! ${RULESETNAME} =~ "#" ]]
+            then
+              log "** Getting connector id for ${CONNECTORNAME}...\n"
+              CONNECTORID=$(get_connectorid ${CONNECTORNAME})
+
+              log "** Creating ruleset ${RULESETNAME}...\n"
+              RULESETID=$(create_ruleset ${RULESETNAME} ${CONNECTORID})
+
+              log "** Executing bulk table update for ${RULESETNAME}"
+              ret=$(ruleset_bulkupdate ${RULESETID})
+          fi
+        done < ${RULESETFILE}
+    fi
 fi
