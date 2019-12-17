@@ -13,6 +13,7 @@
 #    --expressions-file       -e CSV file like ExpressionName;DomainName;level;Regex                expressions.cfg
 #    --domains-file           -d CSV file like Domain Name;Classification;Algorithm                 domains.cfg
 #    --masking-engine         -m Masking Engine Address
+#    --create-connection      -c Create environment connection
 #    --help                   -h help
 #
 #   Ex.: masking_setup.sh --profile-name LGPD -e ./expressions.csv -d domains.cfg -m 172.168.8.128
@@ -121,6 +122,9 @@ EOF
 ################################
 # Verifica se foi passado algum parametro
 [ "$1" ] || { help ; exit 1 ; }
+
+# Verifica se o jq esta instalado
+[ -x "$(which jq)" ] || { echo "jq not found. Please install 'jq' package and try again." ; exit 1 ; }
 
 # Tratamento dos Parametros
 for arg
