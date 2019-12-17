@@ -168,7 +168,6 @@ EOF
 
 RESULTSETID=$(echo ${RET} | jq -r '.databaseRulesetId')
 echo ${RESULTSETID}
-
 }
 
 ruleset_bulkupdate(){
@@ -184,7 +183,54 @@ curl -s -X PUT -H ''"${AUTH_HEADER}"'' -H 'Content-Type: application/json' -H 'A
   ]
 }
 EOF
+}
 
+get_profilesetid(){
+PROFILESETNAME=${1}
+
+PROFILESETLIST=$(curl -s -X GET -H ''"${AUTH_HEADER}"'' -H 'Content-Type: application/json' -H 'Accept: application/json' ${MASKING_ENGINE}/profile-sets)
+PROFILESETID=$(echo ${PROFILESETLIST} | jq -r ".responseList[] | select(.profuleSetName == "${PROFILESETNAME}") | .profileSetId")
+
+echo ${PROFILESETID}
+}
+
+create_profilejob(){
+PROFILEJOBNAME=${1}
+PROFILESETID=${2}
+RULESETID=${3}
+
+curl -s -X POST -H ''"${AUTH_HEADER}"'' -H 'Content-Type: application/json' -H 'Accept: application/json' --data @- ${MASKING_ENGINE}/profile-jobs <<EOF
+{
+  "jobName": "${PROFILEJOBNAME}",
+  "profileSetId": ${PROFILESETID},
+  "rulesetId": ${RULESETID},
+  "feedbackSize": 50000,
+  "maxMemory": 4096,
+  "numInputStreams": 5
+}
+EOF
+}
+
+create_maskjob(){
+MASKJOBNAME=${1}
+RULESETID=${2}
+
+curl -s -X POST -H ''"${AUTH_HEADER}"'' -H 'Content-Type: application/json' -H 'Accept: application/json' --data @- ${MASKING_ENGINE}/masking-jobs <<EOF
+{
+  "jobName": "${MASKJOBNAME}",
+  "rulesetId": ${RULESETID},
+  "feedbackSize": 100000,
+  "onTheFlyMasking": false,
+  "databaseMaskingOptions": {
+    "batchUpdate": true,
+    "commitSize": 50000,
+    "dropConstraints": false,
+    "maxMemory": 4096,
+    "numInputStreams": 5,
+
+  }
+}
+EOF
 }
 
 ################################
@@ -315,5 +361,17 @@ if [ -e ${EXPRESSFILE} ] && [ -e ${DOMAINSFILE} ] && [ ${MASKING_ENGINE} ]
               ret=$(ruleset_bulkupdate ${RULESETID})
           fi
         done < ${RULESETFILE}
+        # Create JobProfile 
+        PROFILEJOBNAME="PR_JOB_${RULESETNAME}"
+        log "* getting profileset id ...\n"
+        PROFILESETID=$(get_profilesetid ${PROFILENAME})
+
+        log "** creating profile job JOB_PR_${RULESETNAME}..."
+        PROFILEJOB=$(create_profilejob ${PROFILENAME} ${PROFILEJOBID} ${RULESETID})
+
+        # Create Masking Job
+        MASKJOBNAME="MSK_JOB_${RULESETNAME}"
+        log "** creating masking job ${MASKJOBNAME}..."
+        PROFILEJOB=$(create_maskjob ${MASKJOBNAME} ${RULESETID})
     fi
 fi
