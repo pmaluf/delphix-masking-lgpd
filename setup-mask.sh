@@ -9,17 +9,21 @@
 #
 #    Parameter             Short Description                                                        Default
 #    --------------------- ----- ------------------------------------------------------------------ ---------------
-#    --profile-name           -p Profile name
+#    --profile-name           -p Profile name                                                       LGPD
 #    --application-name       -a Application Name
 #    --environment-name       -e Environment Name
-#    --expressions-file       -f Delimiter file like: ExpressionName;DomainName;level;Regex         expressions.cfg               
-#    --domains-file           -d Delimiter file like: Domain Name;Classification;Algorithm          domains.cfg 
-#    --connection-file        -c Delimiter file like: connectorName;databaseType;environmentId;     connections.cfg
+#    --expressions-file       -f Delimiter file with: ExpressionName;DomainName;level;Regex         expressions.cfg               
+#    --domains-file           -d Delimiter file with: Domain Name;Classification;Algorithm          domains.cfg 
+#    --connection-file        -c Delimiter file with: connectorName;databaseType;environmentId;     connections.cfg
 #                                                     host;password;port;schemaName;sid;username 
-#    --masking-engine         -m Masking Engine Address
+#    --masking-engine         -m Masking Engine Address 
 #    --help                   -h help
 #
-#   Ex.: masking_setup.sh --profile-name LGPD -a HR -e HR -f ./expressions.csv -d ./domains.cfg -c ./connections.cfg -m 172.168.8.128
+#   Ex.: 
+#   masking_setup.sh --profile-name LGPD --application-name HR --environment-name HR --expressions-file ./expressions.cfg  \
+#                    --domains-file ./domains.cfg --connection-file ./connections.cfg --masking-engine 172.168.8.128
+#   
+#   masking_setup.sh --connection-file ./connections.cfg -m 172.168.8.128 --environment-name HR
 #
 # Changelog:
 #
@@ -33,13 +37,14 @@
 USERNAME="Admin"
 PASSWORD="Admin-12"
 LAST=".last"
+PROFILENAME="LGPD"
 
 ################################
 # FUNCOES                      #
 ################################
 help()
 {
-  head -21 $0 | tail -19
+  head -33 $0 | tail -31
   exit
 }
 
@@ -330,7 +335,7 @@ done
 ################################
 # MAIN                         #
 ################################
-if [ -e ${EXPRESSFILE} ] && [ -e ${DOMAINSFILE} ] && [ ${MASKING_ENGINE} ]
+if [ ${MASKING_ENGINE} ]
   then
     # Set masking engine variable from user input
     MASKING_ENGINE="http://${MASKING_ENGINE}/masking/api"
@@ -338,102 +343,113 @@ if [ -e ${EXPRESSFILE} ] && [ -e ${DOMAINSFILE} ] && [ ${MASKING_ENGINE} ]
     # Login on Masking Engine
     login
 
-    # Create masking application
-    log "Creating application ${APPLICATIONNAME}...\n"
-    ret=$(create_application ${APPLICATIONNAME})
-    check_error ${ret}
+    if [ ${APPLICATIONNAME} ]
+      then
+        # Create masking application
+        log "Creating application ${APPLICATIONNAME}...\n"
+        ret=$(create_application ${APPLICATIONNAME})
+        check_error ${ret}
+    fi
 
-    # Create masking environment 
-    log "Creating environment ${ENVIRONMENTNAME}...\n"
-    ret=$(create_environment ${ENVIRONMENTNAME} ${APPLICATIONNAME})
-    check_error ${ret}
-
-    # Create Domains 
-    log "Creating domain ${NEW_DOMAIN}...\n"
-    while IFS=\; read -r NEW_DOMAIN CLASSIFICATION ALGORITHM
-    do
-      if [[ ! ${NEW_DOMAIN} =~ "#" ]]
-        then
-          ret=$(add_domain ${NEW_DOMAIN} ${CLASSIFICATION} ${ALGORITHM})
-      fi
-    done < ${DOMAINSFILE}
-
-    # Create Expressions 
-    log "Creating expressions: \n"
-    while IFS=\; read -r EXPRESSNAME DOMAIN DATALEVEL REGEXP
-    do
-      if [[ ! ${EXPRESSNAME} =~ "#" ]]
-        then
-          log "* ${EXPRESSNAME}\n" 0
-          ret=$(add_expression ${DOMAIN} ${EXPRESSNAME} ${REGEXP} ${DATALEVEL} | tee -a $$.tmp)
-      fi
-    done < ${EXPRESSFILE}
-  
-    # Get Created Expression Ids
-    # 7 - Creditcard
-    # 8 - Creditcard
-    # 11 - Email
-    # 22 - Creditcard Data
-    # 23 - Email Data
-    # 49 - Ip Address Data
-    # 50 - Ip Address
-    EXPRESSID=$(egrep -o '"profileExpressionId":[0-9]+' $$.tmp | cut -d: -f2 | xargs | sed 's/ /,/g')
-    EXPRESSID="7,8,11,22,23,49,50,${EXPRESSID}"
+    if [ ${ENVIRONMENTNAME} ]
+      then
+        # Create masking environment 
+        log "Creating environment ${ENVIRONMENTNAME}...\n"
+        ret=$(create_environment ${ENVIRONMENTNAME} ${APPLICATIONNAME})
+    fi
     
-    # Add ProfileSet
-    log "Adding expressions ids ${EXPRESSID} to ${PROFILENAME}...\n"
-    ret=$(add_profileset "${PROFILENAME}" "${EXPRESSID}")
+    if [ ${EXPRESSFILE} ] && [ ${DOMAINSFILE} ]
+      then
+        # Create Domains 
+        log "Creating domain ${NEW_DOMAIN}...\n"
+        while IFS=\; read -r NEW_DOMAIN CLASSIFICATION ALGORITHM
+        do
+          if [[ ! ${NEW_DOMAIN} =~ "#" ]]
+            then
+              ret=$(add_domain ${NEW_DOMAIN} ${CLASSIFICATION} ${ALGORITHM})
+          fi
+        done < ${DOMAINSFILE}
 
-    # remove tmpfile
-    rm -f $$.tmp
-    
-    # Create connection environment
-    log "Getting environment id for ${ENVIRONMENTNAME}...\n"
-    ENVIRONMENTID=$(get_environmentid ${ENVIRONMENTNAME})
-
-    while IFS=\; read -r CONNECTORNAME DATABASETYPE HOST PORT SID USERNAME PASSWORD SCHEMANAME
-    do
-      if [[ ! ${CONNECTORNAME} =~ "#" ]]
-        then
-          log "Creating connection ${CONNECTORNAME} for environment ${ENVIRONMENTNAME}...\n"
-          ret=$(create_connection ${CONNECTORNAME} ${DATABASETYPE} ${ENVIRONMENTID} ${HOST} ${PORT} ${SID} ${USERNAME} ${PASSWORD} ${SCHEMANAME})
-          check_error ${ret}
-
-          log "Getting connector id for ${CONNECTORNAME}...\n"
-          CONNECTORID=$(get_connectorid ${CONNECTORNAME})
-
-          # Create RuleSet 
-          RULESETNAME="RS_${CONNECTORNAME}"
-          log "Creating ruleset ${RULESETNAME}...\n"
-          ret=$(create_ruleset ${RULESETNAME} ${CONNECTORID})
-          check_error ${ret}
-
-          log "Getting ruleset id for ${RULESETNAME}\n"
-          RULESETID=$(get_rulesetid ${RULESETNAME})
-
-          log "Getting tables from ${CONNECTORNAME} schema...\n"
-          TABLES=$(get_tables ${CONNECTORID})
-
-          log "Creating metadata for table:\n"
-          for TABLE in ${TABLES}
-          do
-            log "* ${TABLE}\n"
-            ret=$(create_tablemetadata ${TABLE} ${RULESETID})
-            check_error ${ret}
-          done
-
-          # Create Job Profile
-          log "Getting profileset id ...\n"
-          PROFILESETID=$(get_profilesetid ${PROFILENAME})
+        # Create Expressions 
+        log "Creating expressions: \n"
+        while IFS=\; read -r EXPRESSNAME DOMAIN DATALEVEL REGEXP
+        do
+          if [[ ! ${EXPRESSNAME} =~ "#" ]]
+            then
+              log "* ${EXPRESSNAME}\n" 0
+              ret=$(add_expression ${DOMAIN} ${EXPRESSNAME} ${REGEXP} ${DATALEVEL} | tee -a $$.tmp)
+          fi
+        done < ${EXPRESSFILE}
+      
+        # Get Created Expression Ids
+        # 7 - Creditcard
+        # 8 - Creditcard
+        # 11 - Email
+        # 22 - Creditcard Data
+        # 23 - Email Data
+        # 49 - Ip Address Data
+        # 50 - Ip Address
+        EXPRESSID=$(egrep -o '"profileExpressionId":[0-9]+' $$.tmp | cut -d: -f2 | xargs | sed 's/ /,/g')
+        EXPRESSID="7,8,11,22,23,49,50,${EXPRESSID}"
         
-          log "Creating profile job PR_JOB_${CONNECTORNAME}...\n"
-          ret=$(create_profilejob "PR_JOB_${CONNECTORNAME}" ${PROFILESETID} ${RULESETID})
-          check_error ${ret}
+        # Add ProfileSet
+        log "Adding expressions ids ${EXPRESSID} to ${PROFILENAME}...\n"
+        ret=$(add_profileset "${PROFILENAME}" "${EXPRESSID}")
 
-          # Create Masking Job
-          log "Creating masking job MSK_JOB_${CONNECTORNAME}...\n"
-          ret=$(create_maskjob "MSK_JOB_${CONNECTORNAME}" ${RULESETID})
-          check_error ${ret}
-      fi
-    done < ${CONNECTIONFILE}    
+        # remove tmpfile
+        rm -f $$.tmp
+    fi
+    
+    if [ ${CONNECTIONFILE} ] && [ ${ENVIRONMENTNAME} ] && [ ${PROFILENAME} ]
+      then 
+        # Create connection environment
+        log "Getting environment id for ${ENVIRONMENTNAME}...\n"
+        ENVIRONMENTID=$(get_environmentid ${ENVIRONMENTNAME})
+
+        while IFS=\; read -r CONNECTORNAME DATABASETYPE HOST PORT SID USERNAME PASSWORD SCHEMANAME
+        do
+          if [[ ! ${CONNECTORNAME} =~ "#" ]]
+            then
+              log "Creating connection ${CONNECTORNAME} for environment ${ENVIRONMENTNAME}...\n"
+              ret=$(create_connection ${CONNECTORNAME} ${DATABASETYPE} ${ENVIRONMENTID} ${HOST} ${PORT} ${SID} ${USERNAME} ${PASSWORD} ${SCHEMANAME})
+              check_error ${ret}
+
+              log "Getting connector id for ${CONNECTORNAME}...\n"
+              CONNECTORID=$(get_connectorid ${CONNECTORNAME})
+
+              # Create RuleSet 
+              RULESETNAME="RS_${CONNECTORNAME}"
+              log "Creating ruleset ${RULESETNAME}...\n"
+              ret=$(create_ruleset ${RULESETNAME} ${CONNECTORID})
+              check_error ${ret}
+
+              log "Getting ruleset id for ${RULESETNAME}\n"
+              RULESETID=$(get_rulesetid ${RULESETNAME})
+
+              log "Getting tables from ${CONNECTORNAME} schema...\n"
+              TABLES=$(get_tables ${CONNECTORID})
+
+              log "Creating metadata for table:\n"
+              for TABLE in ${TABLES}
+              do
+                log "* ${TABLE}\n"
+                ret=$(create_tablemetadata ${TABLE} ${RULESETID})
+                check_error ${ret}
+              done
+
+              # Create Job Profile
+              log "Getting profileset id ...\n"
+              PROFILESETID=$(get_profilesetid ${PROFILENAME})
+            
+              log "Creating profile job PR_JOB_${CONNECTORNAME}...\n"
+              ret=$(create_profilejob "PR_JOB_${CONNECTORNAME}" ${PROFILESETID} ${RULESETID})
+              check_error ${ret}
+
+              # Create Masking Job
+              log "Creating masking job MSK_JOB_${CONNECTORNAME}...\n"
+              ret=$(create_maskjob "MSK_JOB_${CONNECTORNAME}" ${RULESETID})
+              check_error ${ret}
+          fi
+        done < ${CONNECTIONFILE}
+    fi
 fi
