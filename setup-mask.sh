@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# masking_setup.sh
+# setup_mask.sh
 # Created: Paulo Victor Maluf - 09/2019
 #
 # Parameters:
@@ -20,14 +20,14 @@
 #    --help                   -h help
 #
 #   Ex.: 
-#   masking_setup.sh --profile-name LGPD --application-name HR --environment-name HR --expressions-file ./expressions.cfg  \
-#                    --domains-file ./domains.cfg --connection-file ./connections.cfg --masking-engine 172.168.8.128
+#   setup_mask.sh --profile-name LGPD --application-name HR --environment-name HR --expressions-file ./expressions.cfg  \
+#                 --domains-file ./domains.cfg --connection-file ./connections.cfg --masking-engine 172.168.8.128
 #   
-#   masking_setup.sh --connection-file ./connections.cfg -m 172.168.8.128 --environment-name HR
+#   setup_mask.sh --connection-file ./connections.cfg -m 172.168.8.128 --environment-name HR
 #
 # Changelog:
 #
-# Date       Author               Description
+# Date       Author              Description
 # ---------- ------------------- ----------------------------------------------------
 #====================================================================================
 
@@ -62,8 +62,8 @@ check_empty() {
 
 # Check if $1 is an object and if it has an 'errorMessage' specified. If so, print the object and exit.
 check_error() {
-    # jq returns a literal null so we have to check againt that...
-    if [ "$(echo "$1" | jq -r 'if type=="object" then .errorMessage else "null" end')" != 'null' ]; then
+    # ${JQ} returns a literal null so we have to check againt that...
+    if [ "$(echo "$1" | ${JQ} -r 'if type=="object" then .errorMessage else "null" end')" != 'null' ]; then
         echo $1
         exit 1
     fi
@@ -80,7 +80,7 @@ LOGIN_RESPONSE=$(curl -s -X POST -H 'Content-Type: application/json' -H 'Accept:
 EOF
 )
     check_error "$LOGIN_RESPONSE"
-    TOKEN=$(echo $LOGIN_RESPONSE | jq -r '.Authorization')
+    TOKEN=$(echo $LOGIN_RESPONSE | ${JQ} -r '.Authorization')
     AUTH_HEADER="Authorization: $TOKEN"
 }
 
@@ -112,7 +112,7 @@ ENVIRONMENTNAME=${1}
 RESPONSE=$(curl -s -X GET -H ''"${AUTH_HEADER}"'' -H 'Content-Type: application/json' -H 'Accept: application/json' ${MASKING_ENGINE}/environments)
 check_error ${RESPONSE}
 
-ENVIRONMENTID=$(echo ${RESPONSE} | jq -r ".responseList[] | select(.environmentName == \"${ENVIRONMENTNAME}\") | .environmentId")
+ENVIRONMENTID=$(echo ${RESPONSE} | ${JQ} -r ".responseList[] | select(.environmentName == \"${ENVIRONMENTNAME}\") | .environmentId")
 
 echo ${ENVIRONMENTID}
 }
@@ -188,7 +188,7 @@ EOF
 get_connectorid(){
 CONNECTORNAME=${1}
 CONNECTORLIST=$(curl -s -X GET -H ''"${AUTH_HEADER}"'' -H 'Content-Type: application/json' -H 'Accept: application/json' ${MASKING_ENGINE}/database-connectors)
-CONNECTORID=$(echo ${CONNECTORLIST} | jq -r ".responseList[] | select(.connectorName == \"${CONNECTORNAME}\") | .databaseConnectorId")
+CONNECTORID=$(echo ${CONNECTORLIST} | ${JQ} -r ".responseList[] | select(.connectorName == \"${CONNECTORNAME}\") | .databaseConnectorId")
 echo ${CONNECTORID}
 }
 
@@ -208,7 +208,7 @@ get_rulesetid(){
   RULESETNAME=${1}
   RET=$(curl -s -X GET -H ''"${AUTH_HEADER}"'' -H 'Content-Type: application/json' -H 'Accept: application/json' ${MASKING_ENGINE}/database-rulesets)
   check_error ${RET}
-  RESULTSETID=$(echo ${RET} | jq -r ".responseList[] | select(.rulesetName == \"${RULESETNAME}\") | .databaseRulesetId")
+  RESULTSETID=$(echo ${RET} | ${JQ} -r ".responseList[] | select(.rulesetName == \"${RULESETNAME}\") | .databaseRulesetId")
   echo ${RESULTSETID}
 }
 
@@ -229,7 +229,7 @@ get_tables(){
   CONNECTORID=${1}
   RET=$(curl -s -X GET -H ''"${AUTH_HEADER}"'' -H 'Content-Type: application/json' -H 'Accept: application/json' ${MASKING_ENGINE}/database-connectors/${CONNECTORID}/fetch)
   check_error ${RET}
-  TABLES=$(echo ${RET} | jq ".[]" | xargs)
+  TABLES=$(echo ${RET} | ${JQ} ".[]" | xargs)
   echo ${TABLES}
 }
 
@@ -238,7 +238,7 @@ PROFILESETNAME=${1}
 
 RESPONSE=$(curl -s -X GET -H ''"${AUTH_HEADER}"'' -H 'Content-Type: application/json' -H 'Accept: application/json' ${MASKING_ENGINE}/profile-sets)
 check_error ${RESPONSE}
-PROFILESETID=$(echo ${RESPONSE} | jq -r ".responseList[] | select(.profileSetName == \"${PROFILESETNAME}\") | .profileSetId")
+PROFILESETID=$(echo ${RESPONSE} | ${JQ} -r ".responseList[] | select(.profileSetName == \"${PROFILESETNAME}\") | .profileSetId")
 
 echo ${PROFILESETID}
 }
@@ -289,8 +289,16 @@ EOF
 # Verifica se foi passado algum parametro
 [ "$1" ] || { help ; exit 1 ; }
 
-# Verifica se o jq esta instalado
-[ -x "$(which jq)" ] || { echo "jq not found. Please install 'jq' package and try again." ; exit 1 ; }
+# Verifica se o ${JQ} esta instalado
+if [ "$(uname -s)." == "Linux." ] 
+  then 
+    JQ="./bin/jq"
+elif [ "$(uname -s)." == "Darwin." ] 
+  then
+    JQ="./bin/jq-osx"
+fi
+    
+[ -x "${JQ}" ] || { echo "jq not found. Please install 'jq' package and try again." ; exit 1 ; }
 
 # Tratamento dos Parametros
 for arg
@@ -348,7 +356,6 @@ if [ ${MASKING_ENGINE} ]
         # Create masking application
         log "Creating application ${APPLICATIONNAME}...\n"
         ret=$(create_application ${APPLICATIONNAME})
-        check_error ${ret}
     fi
 
     if [ ${ENVIRONMENTNAME} ]
