@@ -170,6 +170,8 @@ USERNAME=${7}
 PASSWORD=${8}
 SCHEMANAME=${9}
 
+[ "${DATABASETYPE}." == "ORACLE." ] && SID="\"sid\": \"${SID}\"," || SID="\"databaseName\": \"${SID}\","
+
 curl -s -X POST -H ''"${AUTH_HEADER}"'' -H 'Content-Type: application/json' -H 'Accept: application/json' --data @- ${MASKING_ENGINE}/database-connectors <<EOF
 {
   "connectorName": "${CONNECTORNAME}",
@@ -179,7 +181,7 @@ curl -s -X POST -H ''"${AUTH_HEADER}"'' -H 'Content-Type: application/json' -H '
   "password": "${PASSWORD}",
   "port": ${PORT},
   "schemaName": "${SCHEMANAME}",
-  "sid": "${SID}",
+  ${SID}
   "username": "${USERNAME}"
 }
 EOF
@@ -215,12 +217,15 @@ get_rulesetid(){
 create_tablemetadata(){
 TABLENAME=${1}
 RULESETID=${2}
+DATABASETYPE=${3}
+
+[ "${DATABASETYPE}." == "ORACLE." ] && ROWID="\"keyColumn\": \"ROWID\","
 
 curl -s -X POST -H ''"${AUTH_HEADER}"'' -H 'Content-Type: application/json' -H 'Accept: application/json' --data @- ${MASKING_ENGINE}/table-metadata <<EOF
 {
   "tableName": "${TABLENAME}",
-  "rulesetId": ${RULESETID},
-  "keyColumn": "ROWID"
+  ${ROWID}
+  "rulesetId": ${RULESETID}
 }
 EOF
 }
@@ -440,7 +445,7 @@ if [ ${MASKING_ENGINE} ]
               for TABLE in ${TABLES}
               do
                 log "* ${TABLE}\n"
-                ret=$(create_tablemetadata ${TABLE} ${RULESETID})
+                ret=$(create_tablemetadata ${TABLE} ${RULESETID} ${DATABASETYPE})
                 check_error ${ret}
               done
 
