@@ -1,0 +1,9 @@
+select t.JOB || '|' ||
+       t.PRIV_USER || '|' ||
+	   t.SCHEMA_USER || '|' ||
+	   t.BROKEN || '|' ||
+	   t.FAILURES
+from DBA_JOBS t;
+
+Executed in 0,016 seconds
+spool off

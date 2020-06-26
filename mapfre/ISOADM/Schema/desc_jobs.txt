@@ -1,0 +1,3 @@
+101|FAMENDES|MI_KIPREV|N|
+
+Executed in 0,015 seconds

@@ -1,0 +1,18 @@
+select t.OWNER || '|' ||
+       t.TRIGGER_NAME || '|' ||
+     t.TABLE_NAME || '|' ||
+     t.TRIGGER_TYPE || '|' ||
+     t.COLUMN_NAME || '|' ||
+     t.STATUS
+from DBA_TRIGGERS;
+
+select t.OWNER || '|' ||
+       t.TRIGGER_NAME || '|' ||
+     t.TABLE_NAME || '|' ||
+     t.TRIGGER_TYPE || '|' ||
+     t.COLUMN_NAME || '|' ||
+     t.STATUS
+from DBA_TRIGGERS
+
+ORA-00904: "T"."STATUS": invalid identifier
+spool off

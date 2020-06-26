@@ -1,0 +1,6 @@
+1|SYS|SYS|N|0
+201|SYSMAN|SYSMAN|N|0
+23|SYS|SYS|Y|18
+41|SYS|SYS|Y|0
+
+Executed in 0,25 seconds

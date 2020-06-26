@@ -1,0 +1,17 @@
+select t.JOB || '|' ||
+       t.PRIV_USER || '|' ||
+	   t.SCHEMA_USER || '|' ||
+	   t.BROKEN || '|' ||
+	   t.FAILURES
+from DBA_JOBS t;
+41|SYS|SYS|N|0
+42|SYS|SYS|N|0
+43|SYS|SYS|N|0
+61|T_LJUNIOR|T_LJUNIOR|N|0
+62|T_LJUNIOR|T_LJUNIOR|N|0
+4001|APEX_030200|APEX_030200|N|0
+4002|APEX_030200|APEX_030200|N|0
+101|CIRADM|CIRADM|N|0
+
+Executed in 0,125 seconds
+spool off
