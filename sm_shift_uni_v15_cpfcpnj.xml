@@ -447,8 +447,8 @@ Setting keep_first=6   >> this would keep the first 6 characters of input unmask
 Copyright (c) 2019 by Delphix. All rights reserved.</note>
       <xloc>0</xloc>
       <yloc>0</yloc>
-      <width>540</width>
-      <heigth>109</heigth>
+      <width>739</width>
+      <heigth>145</heigth>
       <fontname>.SF NS Text</fontname>
       <fontsize>9</fontsize>
       <fontbold>N</fontbold>
@@ -638,56 +638,36 @@ else
 	inputValueArr = mask.split("");
 	for (i = 0; i &lt; last2; i++) 
 	{	
-		if ( inputValueArr[i] == "0")
-		{
-			if (lead.slice(-1) == "0" || lead.length == 0)
-			{
-				zero = leading0;
-			} else {
-				zero = false;
-			} 
-		} else {
-			zero = false;
+
+		if ( (charSetNumArr.indexOf(inputValueArr[i])) != -1 )
+		{	
+			inputValueArr[i] = charSetNumArr[myShift(shiftValNum, (charSetNumArr.indexOf(inputValueArr[i])) , numShiftMax)];
 		}
-
-		if ( zero == false)
-		{
-			if ( (charSetNumArr.indexOf(inputValueArr[i])) != -1 )
+		
+		if (numeric_only == false) {
+			if (   (charSetStrCapsArr.indexOf(inputValueArr[i])) != -1 )
 			{	
-				inputValueArr[i] = charSetNumArr[(charSetNumArr.indexOf(inputValueArr[i]))+myShift(shiftValNum, i , numShiftMax)];
+					inputValueArr[i] = charSetStrCapsArr[(charSetStrCapsArr.indexOf(inputValueArr[i]))+myShift(shiftValUpperCase, i , upperShiftMax)];
 			}
-			
-			if (numeric_only == false) {
-
-				if (   (charSetStrCapsArr.indexOf(inputValueArr[i])) != -1 )
-				{	
-						inputValueArr[i] = charSetStrCapsArr[(charSetStrCapsArr.indexOf(inputValueArr[i]))+myShift(shiftValUpperCase, i , upperShiftMax)];
-				}
-				else if (   (charSetStrArr.indexOf(inputValueArr[i])) != -1  )
-				{
-					inputValueArr[i] = charSetStrArr[(charSetStrArr.indexOf(inputValueArr[i]))+myShift(shiftValLowerCase, i , lowerShiftMax)]; 	
-				}
-				else if (   (charSetLowerSpec.indexOf(inputValueArr[i])) != -1  )
-				{
-					inputValueArr[i] = charSetLowerSpec[(charSetLowerSpec.indexOf(inputValueArr[i]))+myShift(shiftValLowerSpec, i , lowerSpecMax)]; 	
-				}
-				else if (   (charSetUpperSpec.indexOf(inputValueArr[i])) != -1  )
-				{
-					inputValueArr[i] = charSetUpperSpec[(charSetUpperSpec.indexOf(inputValueArr[i]))+myShift(shiftValUpperSpec, i , upperSpecMax)]; 	
-				}
-				else if (   (charSetUpperCyr.indexOf(inputValueArr[i])) != -1  )
-				{
-					inputValueArr[i] = charSetUpperCyr[(charSetUpperCyr.indexOf(inputValueArr[i]))+myShift(shiftValUpperCyr, i , upperCyrMax)]; 	
-				}
-				else if (   (charSetLowerCyr.indexOf(inputValueArr[i])) != -1  )
-				{
-					inputValueArr[i] = charSetLowerCyr[(charSetLowerCyr.indexOf(inputValueArr[i]))+myShift(shiftValLowerCyr, i , lowerCyrMax)]; 	
-				}
-				
-			}
-			else
+			else if (   (charSetStrArr.indexOf(inputValueArr[i])) != -1  )
 			{
-				inputValueArr[i] = inputValueArr[i];
+				inputValueArr[i] = charSetStrArr[(charSetStrArr.indexOf(inputValueArr[i]))+myShift(shiftValLowerCase, i , lowerShiftMax)]; 	
+			}
+			else if (   (charSetLowerSpec.indexOf(inputValueArr[i])) != -1  )
+			{
+				inputValueArr[i] = charSetLowerSpec[(charSetLowerSpec.indexOf(inputValueArr[i]))+myShift(shiftValLowerSpec, i , lowerSpecMax)]; 	
+			}
+			else if (   (charSetUpperSpec.indexOf(inputValueArr[i])) != -1  )
+			{
+				inputValueArr[i] = charSetUpperSpec[(charSetUpperSpec.indexOf(inputValueArr[i]))+myShift(shiftValUpperSpec, i , upperSpecMax)]; 	
+			}
+			else if (   (charSetUpperCyr.indexOf(inputValueArr[i])) != -1  )
+			{
+				inputValueArr[i] = charSetUpperCyr[(charSetUpperCyr.indexOf(inputValueArr[i]))+myShift(shiftValUpperCyr, i , upperCyrMax)]; 	
+			}
+			else if (   (charSetLowerCyr.indexOf(inputValueArr[i])) != -1  )
+			{
+				inputValueArr[i] = charSetLowerCyr[(charSetLowerCyr.indexOf(inputValueArr[i]))+myShift(shiftValLowerCyr, i , lowerCyrMax)]; 	
 			}
 		}
 		lead += inputValueArr[i];
