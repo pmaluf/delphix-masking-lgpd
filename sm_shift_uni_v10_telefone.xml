@@ -756,7 +756,7 @@ function maskLocalAreaCode (numbers, shiftval) {
     firstDigit = charSetNumArr[myShift(shiftval, (charSetNumArr.indexOf(inputArray[0])) , numShiftMax)];
     firstDigit = (firstDigit=="0")? 1 : firstDigit;
     tmp = VALID_LOCAL_CODES[firstDigit]
-    secondDigit = tmp[tmp.length%parseInt(firstDigit)]
+    secondDigit = tmp[(tmp.length-1)%parseInt(firstDigit)]
     result=firstDigit+secondDigit;
     return result
 }
