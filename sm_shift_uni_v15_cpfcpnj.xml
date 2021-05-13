@@ -590,100 +590,17 @@ Copyright (c) 2019 by Delphix. All rights reserved.</note>
         <jsScript_type>0</jsScript_type>
         <jsScript_name>Script 1</jsScript_name>
         <jsScript_script>// sm_shift_uni : version 1.5
-// cpf_cnpj : version 1.2 -- created by: david.wells@delphix.com | original cpf/cnpj js code: daniel.stolf@delphix.com | updated by: rafael@delphix.com 
+// cpf_cnpj : version 2.0 -- created by: david.wells@delphix.com | original cpf/cnpj js code: daniel.stolf@delphix.com | updated by: rafael@delphix.com 
 
-i=0;
-outputValue="";
-inputValueArr = '';
-lead = "";
-zero = false;
 
-iscpf = false;
-hasmask = false;
-cnpjBranch = "";
 
-if( inputValue == null || isEmpty(inputValue) )
+if( !inputValue || inputValue == null ||  isEmpty(inputValue) )
 {
 	outputValue = inputValue;
 }
 else
 {	
-	
-	outputValue = stripCNPJ(inputValue,false);
-	if (inputValue.length > outputValue.length) { hasmask = true };
-
-	if (isValidCNPJ(padLeft(outputValue,14)))
-	{
-		if (outputValue.length &lt;= 11 &amp;&amp; isValidCPF(padLeft(outputValue,11)))
-		{
-			inputValue = padLeft(outputValue,11);
-			iscpf = true;
-		}
-		else 
-		{
-			inputValue = padLeft(outputValue,14);
-			cnpjBranch = outputValue.substr(outputValue.length-6,4);
-		}
-	}
-	else 
-	{
-		inputValue = padLeft(outputValue,11);
-		iscpf = true;
-	}
-
-	last = inputValue.length
-	keep = substr(inputValue,0,keep_first);
-	mask = substr(inputValue,keep_first, last - keep_first);
-	last2 = mask.length
-	inputValueArr = mask.split("");
-	for (i = 0; i &lt; last2; i++) 
-	{	
-
-		if ( (charSetNumArr.indexOf(inputValueArr[i])) != -1 )
-		{	
-			inputValueArr[i] = charSetNumArr[myShift(shiftValNum, (charSetNumArr.indexOf(inputValueArr[i])) , numShiftMax)];
-		}
-		
-		if (numeric_only == false) {
-			if (   (charSetStrCapsArr.indexOf(inputValueArr[i])) != -1 )
-			{	
-					inputValueArr[i] = charSetStrCapsArr[(charSetStrCapsArr.indexOf(inputValueArr[i]))+myShift(shiftValUpperCase, i , upperShiftMax)];
-			}
-			else if (   (charSetStrArr.indexOf(inputValueArr[i])) != -1  )
-			{
-				inputValueArr[i] = charSetStrArr[(charSetStrArr.indexOf(inputValueArr[i]))+myShift(shiftValLowerCase, i , lowerShiftMax)]; 	
-			}
-			else if (   (charSetLowerSpec.indexOf(inputValueArr[i])) != -1  )
-			{
-				inputValueArr[i] = charSetLowerSpec[(charSetLowerSpec.indexOf(inputValueArr[i]))+myShift(shiftValLowerSpec, i , lowerSpecMax)]; 	
-			}
-			else if (   (charSetUpperSpec.indexOf(inputValueArr[i])) != -1  )
-			{
-				inputValueArr[i] = charSetUpperSpec[(charSetUpperSpec.indexOf(inputValueArr[i]))+myShift(shiftValUpperSpec, i , upperSpecMax)]; 	
-			}
-			else if (   (charSetUpperCyr.indexOf(inputValueArr[i])) != -1  )
-			{
-				inputValueArr[i] = charSetUpperCyr[(charSetUpperCyr.indexOf(inputValueArr[i]))+myShift(shiftValUpperCyr, i , upperCyrMax)]; 	
-			}
-			else if (   (charSetLowerCyr.indexOf(inputValueArr[i])) != -1  )
-			{
-				inputValueArr[i] = charSetLowerCyr[(charSetLowerCyr.indexOf(inputValueArr[i]))+myShift(shiftValLowerCyr, i , lowerCyrMax)]; 	
-			}
-		}
-		lead += inputValueArr[i];
-	}
-	outputValue = keep + lead;
-	// writeToLog("m", " OutputValue: " + outputValue )
-
-	if (!iscpf) 
-	{
-		outputValue = generateCNPJ(outputValue,cnpjBranch,hasmask);
-	}
-	else
-	{
-		outputValue = generateCPF(outputValue,hasmask);
-	}
-
+	outputValue = (inputValue == 'null')? null : inputValue.replace(DOCTO_REGEX,function($0,$1){ return maskValue($1, shiftValNum) ;});
 }
 </jsScript_script>
       </jsScript>
@@ -691,22 +608,8 @@ else
         <jsScript_type>1</jsScript_type>
         <jsScript_name>Start</jsScript_name>
         <jsScript_script>//declare variables here - not in the main script... set initial values needed
-var i=0;
 var outputValue="";
-var inputValueArr = '';
-var lead = "";
-var zero = false;
-
-var iscpf = false;
-var hasmask = false;
-
-
-// configure leadling zero: true / false
-var leading0 = true;
-// mask numerics only = true  / false
-var numeric_only = true;  
-// ignore first N characters
-var keep_first=0;
+const maskInvalid = false
 
 //
 var last = null;
@@ -761,27 +664,71 @@ var shiftValUpperSpec = parseInt(CharShift_UpperSpecKey, 10)+1;
 var shiftValLowerSpec = parseInt(CharShift_LowerSpecKey, 10)+1;
 var shiftValUpperCyr = parseInt(CharShift_UpperCyrKey, 10)+1;
 var shiftValLowerCyr = parseInt(CharShift_LowerCyrKey, 10)+1;
+  
 
 // position specific mapping
 function myShift( a1, a2, a3) {
 	return ((a1 + a2) % a3) + 1;
 }
 
-// add leading zeroes
-function padLeft(num, size) {
-    var s = num+"";
-    while (s.length &lt; size) s = "0" + s;
-    return s;
+function padLeft(str, n) {
+    pad = Array(n+1).join("0")
+    ans = pad.substring(0, pad.length - str.length) + str
+    return ans
 }
-	
 
-// section for CPF ----------------------------------------------------------------------------------------
+const CPF_REGEX = /\d{3}\.?\d{3}\.?\d{3}(?:\-|\.)?\d{2}/i
+const CNPJ_REGEX = /\d{2}\.?\d{3}\.?\d{3}\/?\d{4}\-?\d{2}/i
+const DOCTO_REGEX = /(((?!.*(- \/))\d{1,2}\.?\d{1,3}\.?\d{1,3})\/?\d{4}\-?\d{2}|((?!.*(-\/))\d{1,3}\.?\d{1,3}\.?\d{1,3})(?:\-|\.)?\d{2})/g
+const BLACKLIST_CPF = "00000000000,11111111111,22222222222,33333333333,44444444444,55555555555,66666666666,77777777777,88888888888,99999999999";
+const BLACKLIST_CNPJ ="00000000000000,11111111111111,22222222222222,33333333333333,44444444444444,55555555555555,66666666666666,77777777777777,88888888888888,99999999999999"
 
-// Blacklist common values.
-const BLACKLIST_CPF = "00000000000,11111111111,22222222222,33333333333,44444444444,55555555555,66666666666,77777777777,88888888888,99999999999,12345678909";
 
-const STRICT_STRIP_REGEX_CPF = /[.-]/g;
-const LOOSE_STRIP_REGEX_CPF = /[^\d]/g;
+function isValidCNPJ (inputValue)  {
+
+  // stripped value to just numbers 
+  var cnpj = inputValue.replace(/\D/g,'');
+  var maskedCnpj = inputValue;
+  // A stripped CNPJ cannot have more than 14 characters
+  if (cnpj.length > 14 ) return false;
+  // pad original value with 0s
+  maskedCnpj=padLeft(maskedCnpj, maskedCnpj.length + 14 - cnpj.length);
+  cnpj = padLeft(cnpj, 14);
+  // if padded original value doesn't fit the cnpj regex, return false
+  if(!CNPJ_REGEX.test(maskedCnpj)) return false;
+  
+  // CNPJ can't be blacklisted
+  if (-1 != BLACKLIST_CNPJ.indexOf(cnpj)) { return false; }
+
+  // check verifier digit and return result
+  numbers = cnpj.substr(0, 12);
+  numbers += verifierDigitCNPJ(numbers);
+  numbers += verifierDigitCNPJ(numbers);
+
+  return numbers.substr(-2) === cnpj.substr(-2);
+}
+
+function isValidCPF (inputValue) {
+  // stripped value to just numbers 
+  var cpf = inputValue.replace(/\D/g,'');
+  var maskedCpf = inputValue;
+  // CPF cannot have more than 11 characters
+  if (cpf.length > 11) { return false; }
+  // pad original value with 0s
+  maskedCpf=padLeft(maskedCpf, maskedCpf.length + 11 - cpf.length);
+  cpf = padLeft(cpf, 11)
+  // if padded original value doesn't fit the cpf regex, return false
+  if(!CPF_REGEX.test(maskedCpf)) return false;
+
+  // CPF can't be blacklisted
+  if (-1 != BLACKLIST_CPF.indexOf(cpf)) { return false; }
+
+  // check verifier digit and return result
+  numbers = cpf.substr(0, 9);
+  numbers += verifierDigitCPF(numbers);
+  numbers += verifierDigitCPF(numbers);
+  return numbers.substr(-2) === cpf.substr(-2);
+}
 
 /**
  * Compute the Verifier Digit (or "Dígito Verificador (DV)" in PT-BR).
@@ -792,121 +739,30 @@ const LOOSE_STRIP_REGEX_CPF = /[^\d]/g;
  * @returns {number} the verifier digit.
  */
 function verifierDigitCPF (numbers) {
-  numbers = numbers.split("").map(function(number){ return parseInt(number, 10); });
-
-  const modulus = numbers.length + 1;
-
-  const multiplied = numbers.map(function(number, index) {
-    return number * (modulus - index);
-  });
-
-  const mod = multiplied.reduce(function(buffer, number){
-    return buffer + number;
-  }) % 11;
-
-  return (mod &lt; 2 ? 0 : 11 - mod);
-}
+    numbers = numbers.split("").map(function(number){ return parseInt(number, 10); });
   
-/**
- * Transform the input into a pretty CPF format.
- *
- * Example:
- * ```
- * format('12345678901');
- * // Result: '123.456.789-01'
- * ```
- *
- * @param {string} cpf the CPF.
- * @returns {string} the formatted CPF.
- */
-function formatCPF (cpf) {
-  return cpf.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, "$1.$2.$3-$4");
+    const modulus = numbers.length + 1;
+  
+    const multiplied = numbers.map(function(number, index) {
+      return number * (modulus - index);
+    });
+  
+    const mod = multiplied.reduce(function(buffer, number){
+      return buffer + number;
+    }) % 11;
+  
+    return (mod &lt; 2 ? 0 : 11 - mod);
 }
 
 /**
- * Remove some characters from the `number` input.
- *
- * Example:
- * ```
- * strip('29537995593'); // Result: '29537995593'
- * strip('295.379.955-93'); // Result: '29537995593'
- * strip('295a379b9c5d59e3'); // Result: '29537995593'
- * strip('295a379b9c5d59e3', true); // Result: '295a379b9c5d59e3' - Atention!
- * ```
- *
- * @param {string} cpf the CPF text.
- * @param {boolean} [isStrict] if `true`, it will remove only `.` and `-` characters.
- *                             Otherwise, it will remove all non-digit (`[^\d]`) characters. Optional.
- * @returns {string} the stripped CPF.
- */
-function stripCPF(cpf, isStrict) {
-  const regex = isStrict ? STRICT_STRIP_REGEX_CPF : LOOSE_STRIP_REGEX_CPF;
-  return (cpf || "").toString().replace(regex, "");
-}
-
-function isValidCPF (cpf) {
-
-  // CPF must have 11 chars
-  if (cpf.length !== 11) { return false; }
-
-  // CPF can't be blacklisted
-  if (-1 != BLACKLIST_CPF.indexOf(cpf)) { return false; }
-
-  numbers = cpf.substr(0, 9);
-  numbers += verifierDigitCPF(numbers);
-  numbers += verifierDigitCPF(numbers);
-
-  return numbers.substr(-2) === cpf.substr(-2);
-}
-
-/**
- * generateCPF
- *
- * @param {string} cpf the CPF number.
- * @param {boolean} [isStrict] if `true`, it will accept only `digits`, `.` and `-` characters. Optional.
- * @returns {boolean} `true` if CPF is valid. Otherwise, `false`.
- */
-function generateCPF (stripped, masked) {
-
-  // CPF must be defined
-  if (stripped) { 
-
-  	// CPF must have 11 chars
-  	if (stripped.length == 11) { 
-
-  		// CPF can't be blacklisted
-  		if (-1 === BLACKLIST_CPF.indexOf(stripped)) {
-
-  			numbers = stripped.substr(0, 9);
-  			numbers += verifierDigitCPF(numbers);
-  			numbers += verifierDigitCPF(numbers);
-
-  			return (masked) ? formatCPF(numbers) : numbers;
-		  }
-	  }
-  }
-
-  return stripped;
-}
-
-
-// section for CNPJ ----------------------------------------------------------------------------------------
-
-  const BLACKLIST_CNPJ = "00000000000000,11111111111111,22222222222222,33333333333333,44444444444444,55555555555555,66666666666666,77777777777777,88888888888888,99999999999999";
- 
-  
-  const STRICT_STRIP_REGEX_CNPJ = /[-\/.]/g;
-  const LOOSE_STRIP_REGEX_CNPJ = /[^\d]/g;
-  
-  /**
-   * Compute the Verifier Digit ("Dígito Verificador (DV)" in portuguese) for CNPJ.
-   *
-   * [wikipedia (pt-br)](https://pt.wikipedia.org/wiki/D%C3%ADgito_verificador)
-   *
-   * @param {string} numbers the CNPJ string (only numbers)
-   * @returns {number} the verifier digit.
-   */
-  function verifierDigitCNPJ (numbers) {
+* Compute the Verifier Digit ("Dígito Verificador (DV)" in portuguese) for CNPJ.
+*
+* [wikipedia (pt-br)](https://pt.wikipedia.org/wiki/D%C3%ADgito_verificador)
+*
+* @param {string} numbers the CNPJ string (only numbers)
+* @returns {number} the verifier digit.
+*/
+function verifierDigitCNPJ (numbers) {
     index = 2;
     const reverse = numbers.split("").reduce(function(buffer, number) {
       return [parseInt(number, 10)].concat(buffer);
@@ -920,89 +776,82 @@ function generateCPF (stripped, masked) {
   
     const mod = sum % 11;
     return (mod &lt; 2 ? 0 : 11 - mod);
-  }
-  
-  /**
-   * Prettify CNPJ
-   *
-   * Example:
-   * ```
-   * format('54550752000155');
-   * // Result: '54.550.752/0001-55'
-   * ```
-   *
-   * @param {string} cnpj the CNPJ.
-   * @returns {string} the formatted CNPJ.
-   */
-  function formatCNPJ (cnpj) {
-    return cnpj.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, "$1.$2.$3/$4-$5");
-  }
-  
-  
-  /**
-   * Remove non-numeric characters from string.
-   * strict mode will only remove  characters regularly used in CNPJ format
-   * 
-   * Example:
-   * ```
-   * strip('54550[752#0001..$55'); // Result: '54550752000155'
-   * strip('54550[752#0001..$55', true); // Result: '54550[752#0001..$55' - Atention!
-   * ```
-   *
-    * @param {string} cnpj the CNPJ text.
-   * @param {boolean} [isStrict] if `true`, it will remove only `.` and `-` characters.
-   *                             Otherwise, it will remove all non-digit (`[^\d]`) characters. Optional.
-   * @returns {string} the stripped CNPJ.
-   */
- function stripCNPJ (cnpj, isStrict)  {
-    const regex = isStrict ? STRICT_STRIP_REGEX_CNPJ : LOOSE_STRIP_REGEX_CNPJ;
-    return (cnpj || "").toString().replace(regex, "");
- }
+}
 
- function isValidCNPJ (cnpj)  {
+function maskValue (docValue, shift) {
+    var N=S=0
+    var shiftVal = (shift==9)? shift - 1 : shift ;
 
-    // CNPJ must have 14 chars
-    if (cnpj.length !== 14) { return false; }
+    if (! docValue ) return docValue;
 
-    // CNPJ can't be blacklisted
-    if (-1 != BLACKLIST_CNPJ.indexOf(cnpj)) { return false; }
-  
-    numbers = cnpj.substr(0, 12);
-    numbers += verifierDigitCNPJ(numbers);
-    numbers += verifierDigitCNPJ(numbers);
-  
-    return numbers.substr(-2) === cnpj.substr(-2);
-  }
-  
-  /**
-   * Validate the CNPJ.
-   *
-   * @param {string} cnpj the CNPJ number.
-   * @param {boolean} [isStrict] if `true`, it will accept only `digits`, `.` and `-` characters. Optional.
-   * @returns {boolean} `true` if CNPJ is valid. Otherwise, `false`.
-   */
- function generateCNPJ(stripped, branch, masked) {
-   
-  if (stripped) { 
+    docValue=docValue.trim();
+    docValue=docValue.replace(/\s+$/, '')
+    // N number of digits in each document
+    // S is the stop condition to shift the values
+    // For CPF, we want to mask the whole value
+    // FOR CNPJ OTOH, we just want to shift the first 8 digits (root) 
+    //      and leave the branches alone
+    if (isValidCPF(docValue)) {
+        N=11;
+        S=9;
+    } else if (isValidCNPJ(docValue)) {
+        N=14;
+        S=8;
+    }
+    else {
+        if (! maskInvalid) return docValue
+        N=S=20;
+    }
 
-  	// CNPJ must have 14 chars
-  	if (stripped.length == 14) { 
+    // pad string with 0s
+    var tmp = docValue.replace(/\D/g,'');
+    if (tmp.length==0) return docValue;
+    var numbers=padLeft(docValue, docValue.length + N - tmp.length);
+    var diff = numbers.length - docValue.length;
+    var inputArray = numbers.split("");
+    var maskedNumbers = ""
+    var cnt = 0;
+    var leading0 = true;
+    for (var i = 0; i &lt; inputArray.length; i++) {
 
-      if (-1 === BLACKLIST_CNPJ.indexOf(stripped)) {
+        if (inputArray[i]=="0" &amp;&amp; leading0) {
+            cnt+=1
+            maskedNumbers+=inputArray[i]
+            continue 
+         } else {
+            leading0=false;
+         }
 
-    		numbers = stripped.substr(0, 8).concat(branch);
-    		numbers += verifierDigitCNPJ(numbers);
-    		numbers += verifierDigitCNPJ(numbers);
+        if ( /^\d+$/.test(inputArray[i]) ) {
+            if (cnt &lt; S) {
+                inputArray[i] = charSetNumArr[myShift(shiftVal, (charSetNumArr.indexOf(inputArray[i])) , numShiftMax)];
+                cnt+=1
+            }
+            maskedNumbers+=inputArray[i]
+        }
+    }
 
-        return (masked) ? formatCNPJ(numbers) : numbers;
-      }
-	  }
-  }
-
-  return stripped;
- }
-  
-</jsScript_script>
+    // if original value is a CPF
+    if (N == 11){
+        maskedNumbers = maskedNumbers.substr(0, maskedNumbers.length-2);
+        maskedNumbers += verifierDigitCPF(maskedNumbers);
+        inputArray[inputArray.length -2] = maskedNumbers[maskedNumbers.length -1]
+        maskedNumbers += verifierDigitCPF(maskedNumbers);
+        inputArray[inputArray.length - 1] = maskedNumbers[maskedNumbers.length -1]
+    } 
+    // else it's a CNPJ
+    else if (N==14) {
+        maskedNumbers = maskedNumbers.substr(0, maskedNumbers.length-2);
+        maskedNumbers += verifierDigitCNPJ(maskedNumbers);
+        inputArray[inputArray.length -2] = maskedNumbers[maskedNumbers.length -1]
+        maskedNumbers += verifierDigitCNPJ(maskedNumbers);
+        inputArray[inputArray.length - 1] = maskedNumbers[maskedNumbers.length -1]
+    }
+    // 
+    var result = inputArray.join("").slice(diff);
+    return result;
+    
+}</jsScript_script>
       </jsScript>
     </jsScripts>
     <fields>
@@ -1024,7 +873,7 @@ function generateCPF (stripped, masked) {
       </output>
     </remotesteps>
     <GUI>
-      <xloc>256</xloc>
+      <xloc>224</xloc>
       <yloc>128</yloc>
       <draw>Y</draw>
     </GUI>
