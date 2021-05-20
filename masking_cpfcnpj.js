@@ -220,38 +220,38 @@ function maskValue (inputArray, shift) {
     var cnt = 0;
     var i=0;
     var previous = "0"
-    while (!maskLeading0 && cnt < S){
-        if (inputArray[i]=="0" ){
-            cnt+=1;
-            maskedNumbers+=inputArray[i];
-        }
-        else if (/\d/.test(inputArray[i])){
-            previous = charSetNumArr[myShift(shiftVal, (charSetNumArr.indexOf(previous)) , numShiftMax)];
-            // previous=inputArray[i] = charSetNumArr[myShift(shiftVal, (charSetNumArr.indexOf(inputArray[i])+charSetNumArr.indexOf(previous)) , numShiftMax)];
-            // i+=1;
-            // cnt+=1;
-            break;
-        }
-        i+=1;
-    }
+    // while (!maskLeading0 && cnt < S){
+    //     if (inputArray[i]=="0" ){
+    //         cnt+=1;
+    //         maskedNumbers+=inputArray[i];
+    //     }
+    //     else if (/\d/.test(inputArray[i])){
+    //         previous = charSetNumArr[myShift(shiftVal, (charSetNumArr.indexOf(previous)) , numShiftMax)];
+    //         // previous=inputArray[i] = charSetNumArr[myShift(shiftVal, (charSetNumArr.indexOf(inputArray[i])+charSetNumArr.indexOf(previous)) , numShiftMax)];
+    //         // i+=1;
+    //         // cnt+=1;
+    //         break;
+    //     }
+    //     i+=1;
+    // }
 
-    if (cnt == S) {
-        cnt-=1;
-        i-=1;
-        diff = (diff >= S)? S-1 : diff ;
-    }
+    // if (cnt == S) {
+    //     cnt-=1;
+    //     i-=1;
+    //     diff = (diff >= S)? S-1 : diff ;
+    // }
 
     // // cool implementation of the same logic in the loop above, but ultimately with the same performance.
     // // just couldn't erase it
-    // if (!maskLeading0){
-    //     var zeroRegEx=/^(0\.?){1,8}/g
-    //     segment=numbers.match(zeroRegEx);
-    //     if (segment){
-    //         i=segment[0].length;
-    //         maskedNumbers=segment[0].replace(/\D/g,'');
-    //         cnt=maskedNumbers.length;
-    //     }
-    // }
+    if (!maskLeading0){
+        var zeroRegEx=/^(0\.?){1,8}/g
+        segment=numbers.match(zeroRegEx);
+        if (segment){
+            i=segment[0].length;
+            maskedNumbers=segment[0].replace(/\D/g,'');
+            cnt=maskedNumbers.length;
+        }
+    }
     for (; i < inputArray.length; i++) {
         if ( /^\d+$/.test(inputArray[i]) ) {   
             if (cnt < S) {
@@ -289,12 +289,13 @@ function maskValue (inputArray, shift) {
 var teste_null; 
 inputArray=[
     // ALL ZEROES
-    "410.794.341-00",
-    "41079434100",
-    "41079434100,00",
-    "41079434100.00",
-    // "123.456.789-09",
-    // "012.345.678-90",
+    '441978533',
+    '00441978533',
+    '04541978539',
+    '05856275926',
+    '40856275972',
+    "123.456.789-09",
+    "012.345.678-90",
     // "531.042.910-71, 531042910-71 53104291071 531.042.91071 74143033900 741430339-00 74143033-900 42.583.107/0001-50;42.583.107/000150, 425831070001-50,42583107000150 42583107000-150 42583107/0001-50",
 ]
 
