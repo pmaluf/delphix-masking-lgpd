@@ -714,12 +714,7 @@ function isValidCNPJ (inputValue)  {
   // A stripped CNPJ cannot have more than 14 characters
   if (cnpj.length > 14 ) return false;
   
-  /** we don't test for CNPJ_REGEX anymore, as this is being validated in the input **/
-  // // if padded original value doesn't fit the cnpj regex, return false
-  // var formattedCnpj = inputValue;
-  // if(!CNPJ_REGEX.test(formattedCnpj)) return false;
-  // formattedCnpj=padLeft(formattedCnpj, formattedCnpj.length + 14 - cnpj.length);
-  
+
   // pad original value with 0s
   cnpj = padLeft(cnpj, 14);
 
@@ -740,11 +735,6 @@ function isValidCPF (inputValue) {
   // CPF cannot have more than 11 characters
   if (cpf.length > 11) { return false; }
   
-  /** we don't test for CPF_REGEX anymore, as this is being validated in the input **/
-  // var formattedCpf = inputValue;
-  // formattedCpf=padLeft(formattedCpf, formattedCpf.length + 11 - cpf.length);
-  // // if padded original value doesn't fit the cpf regex, return false
-  // if(!CPF_REGEX.test(formattedCpf)) return false;
 
   // pad original value with 0s
   cpf = padLeft(cpf, 11);
@@ -877,19 +867,16 @@ function maskValue (inputArray, shift) {
     var cnt = 0;
     var i=0;
     var previous = "0"
-    while (!maskLeading0 &amp;&amp; cnt &lt; S){
-        if (inputArray[i]=="0" ){
-            cnt+=1;
-            maskedNumbers+=inputArray[i];
+
+    
+    if (!maskLeading0){
+        var zeroRegEx=/^(0\.?){1,8}/g
+        segment=numbers.match(zeroRegEx);
+        if (segment){
+            i=segment[0].length;
+            maskedNumbers=segment[0].replace(/\D/g,'');
+            cnt=maskedNumbers.length;
         }
-        else if (/\d/.test(inputArray[i])){
-            previous = charSetNumArr[myShift(shiftVal, (charSetNumArr.indexOf(previous)) , numShiftMax)];
-            // previous=inputArray[i] = charSetNumArr[myShift(shiftVal, (charSetNumArr.indexOf(inputArray[i])+charSetNumArr.indexOf(previous)) , numShiftMax)];
-            // i+=1;
-            // cnt+=1;
-            break;
-        }
-        i+=1;
     }
 
     if (cnt == S) {
@@ -898,17 +885,6 @@ function maskValue (inputArray, shift) {
         diff = (diff >= S)? S-1 : diff ;
     }
 
-    // // cool implementation of the same logic in the loop above, but ultimately with the same performance.
-    // // just couldn't erase it
-    // if (!maskLeading0){
-    //     var zeroRegEx=/^(0\.?){1,8}/g
-    //     segment=numbers.match(zeroRegEx);
-    //     if (segment){
-    //         i=segment[0].length;
-    //         maskedNumbers=segment[0].replace(/\D/g,'');
-    //         cnt=maskedNumbers.length;
-    //     }
-    // }
     for (; i &lt; inputArray.length; i++) {
         if ( /^\d+$/.test(inputArray[i]) ) {   
             if (cnt &lt; S) {

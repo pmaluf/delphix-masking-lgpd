@@ -133,7 +133,7 @@ inputArray=[
     "34567890-5",
     "12345678-5",
     "01234567-4",
-    "o rut do cristian é esse aqui 01234567-4 né?"
+    "o rut do cristian é esse aqui 01234567-4 12345678-5 né?"
 ]
 
 for (CharShift_NumKey = 0; CharShift_NumKey < 10; CharShift_NumKey++){ 

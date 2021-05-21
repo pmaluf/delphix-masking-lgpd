@@ -31,7 +31,24 @@ const maskLeading0=false;
 // const DOCTO_REGEX = /^\b((\d{1,2}\.?\d{3}\.?\d{3}\/?\d{4}\-?\d{2})|(\d{2,3}\.?\d{3}\.?\d{3}(?:\-|\.)?\d{2}))\b(?!\d|-|\/|\.)$/g
 
 // ultra high tolerance non-multiline DOCTO_REGEX 
-const DOCTO_REGEX = /\b((\d{1,3}\.?\d{1,3}\.?\d{1,3}(?:\-|\.)?\d{2})|(\d{0,2}\.?\d{0,3}\.?\d{0,3}\/?\d{1,4}\-?\d{2}))\b(?!\d|-|\/|\.)/g
+const DOCTO_REGEX = /\b((\d{1,3}\.?\d{1,3}\.?\d{1,3}(?:\-|\.)?\d{2})|(\d{0,2}\.?\d{0,3}\.?\d{0,3}\/?\d{1,4}\-?\d{2}))(?!\d|-|\/|\.(?! |\n|\p{L}))\b/gi
+
+var regex = DOCTO_REGEX
+
+regex.x = {
+	gRegex: /\b((\d{1,3}\.?\d{1,3}\.?\d{1,3}(?:\-|\.)?\d{2})|(\d{0,2}\.?\d{0,3}\.?\d{0,3}\/?\d{1,4}\-?\d{2}))(?!\d|-|\/|\.(?! |\n|\p{L}))\b/gi,
+	startLb: {
+		regex: /(?<!\d|-|\/|\.)/,
+		type: false
+	}
+};
+
+function lookbehind (data, regex, match) {
+	return (
+		(regex.x.startLb ? (regex.x.startLb.regex.test(data.substring(0, match.index)) === regex.x.startLb.type) : true) &&
+		(regex.x.endLb ? (regex.x.endLb.regex.test(data.substring(0, regex.x.gRegex.lastIndex)) === regex.x.endLb.type) : true)
+	);
+}
 
 // zero tolerance DOCTO_REGEX - 1 missing digit tolerance
 // const DOCTO_REGEX = /^\b((\d{3}\.?\d{3}\.?\d{3}(?:\-|\.)?\d{2})|(\d{2}\.?\d{3}\.?\d{3}\/?\d{4}\-?\d{2}))\b(?!\d|-|\/|\.)$/g
@@ -57,7 +74,12 @@ function isValidCNPJ (inputValue)  {
   // A stripped CNPJ cannot have more than 14 characters
   if (cnpj.length > 14 ) return false;
   
-
+  /** we don't test for CNPJ_REGEX anymore, as this is being validated in the input **/
+  // // if padded original value doesn't fit the cnpj regex, return false
+  // var formattedCnpj = inputValue;
+  // if(!CNPJ_REGEX.test(formattedCnpj)) return false;
+  // formattedCnpj=padLeft(formattedCnpj, formattedCnpj.length + 14 - cnpj.length);
+  
   // pad original value with 0s
   cnpj = padLeft(cnpj, 14);
 
@@ -78,6 +100,11 @@ function isValidCPF (inputValue) {
   // CPF cannot have more than 11 characters
   if (cpf.length > 11) { return false; }
   
+  /** we don't test for CPF_REGEX anymore, as this is being validated in the input **/
+  // var formattedCpf = inputValue;
+  // formattedCpf=padLeft(formattedCpf, formattedCpf.length + 11 - cpf.length);
+  // // if padded original value doesn't fit the cpf regex, return false
+  // if(!CPF_REGEX.test(formattedCpf)) return false;
 
   // pad original value with 0s
   cpf = padLeft(cpf, 11);
@@ -147,7 +174,7 @@ function verifierDigitCNPJ (input) {
 }
 
 
-function maskValue (inputArray, shift) {
+function maskDocument (inputArray, shift) {
     var N=S=0
     var shiftVal = (shift==9)? shift - 1 : shift ;
     var inputDoc = inputArray[0];
@@ -210,8 +237,23 @@ function maskValue (inputArray, shift) {
     var cnt = 0;
     var i=0;
     var previous = "0"
+    // while (!maskLeading0 && cnt < S){
+    //     if (inputArray[i]=="0" ){
+    //         cnt+=1;
+    //         maskedNumbers+=inputArray[i];
+    //     }
+    //     else if (/\d/.test(inputArray[i])){
+    //         previous=inputArray[i]
+    //         inputArray[i] = charSetNumArr[myShift(shiftVal, (charSetNumArr.indexOf(inputArray[i])+charSetNumArr.indexOf(previous)) , numShiftMax)];
+    //         // i+=1;
+    //         // cnt+=1;
+    //         break;
+    //     }
+    //     i+=1;
+    // }
 
-    
+    // // cool implementation of the same logic in the loop above, but ultimately with the same performance.
+    // // just couldn't erase it
     if (!maskLeading0){
         var zeroRegEx=/^(0\.?){1,8}/g
         segment=numbers.match(zeroRegEx);
@@ -262,23 +304,54 @@ function maskValue (inputArray, shift) {
     return inputArray.join("");
 }
 
+
+function maskValue(inputValue, shiftValNum){
+    var result = '',
+        match,
+        lastLastIndex = 0;
+    while (match = regex.x.gRegex.exec(inputValue)) {
+        /* If the match is preceded/not by start lookbehind, and the end of the match is preceded/not by end lookbehind */
+        if (lookbehind(inputValue, regex, match)) {
+            /* replacement can be a function */
+            result += inputValue.substring(lastLastIndex, match.index) + match[0].replace(regex, maskDocument(match.slice(0,3), shiftValNum));
+            if(!regex.global){
+                lastLastIndex = regex.gRegex.lastIndex;
+                break;
+            }
+        /* If the inner pattern matched, but the leading or trailing lookbehind failed */
+        } else {
+            // result += inputValue.substring(lastLastIndex, match.index)+match[0].charAt(0);
+            result += inputValue.substring(lastLastIndex, match.index) + match[0].replace(regex, maskDocument(match.slice(0,3), shiftValNum));
+            /* Set the regex to try again one character after the failed position, rather than at the end of the last match */
+            // regex.x.gRegex.lastIndex = match.index + 1;
+        }
+        lastLastIndex = regex.x.gRegex.lastIndex;
+    }
+    result += inputValue.substring(lastLastIndex);
+    return result;
+}
+
 var teste_null; 
 inputArray=[
     // ALL ZEROES
-    '191',
+    // '191',
     // '000191',
-    '441978533',
-    '00441978533',
-    '04541978539',
-    '05856275926',
-    '40856275972',
-    "123.456.789-09",
-    "012.345.678-90",
+    // '12345678909',
+    // 'o cpf é 441978533',
+    // '00441978533',
+    // '04541978539',
+    // '05856275926',
+    // '40856275972',
+    // "123.456.789-09",
+    // "012.345.678-90",
+    // "meu cpf é 325.687.028-77",
+    // "33.372.251/0126-77",
+    "cpfs 123.456.789-09 ou 12345678909 ou 123456789-09. cnpjs 33.372.251/0126-77 ou 33.372.251/0126-77 ou 33372251012677 e 33372251/0126-77 olha 333722510126-77. fim",
     // "531.042.910-71, 531042910-71 53104291071 531.042.91071 74143033900 741430339-00 74143033-900 42.583.107/0001-50;42.583.107/000150, 425831070001-50,42583107000150 42583107000-150 42583107/0001-50",
 ]
 
 console.time("total-execution")
-for (CharShift_NumKey = 0; CharShift_NumKey < 10; CharShift_NumKey++){ 
+for (CharShift_NumKey = 9; CharShift_NumKey < 10; CharShift_NumKey++){ 
     resultArr = []
     var shiftValNum = parseInt(CharShift_NumKey, 10)+1;
     console.log(`====== shiftValNum ${shiftValNum} ======`)
@@ -286,9 +359,9 @@ for (CharShift_NumKey = 0; CharShift_NumKey < 10; CharShift_NumKey++){
         inputValue = inputArray[j]
         // outputValue = maskDocument(inputValue, shiftValNum)
         console.time("single-execution");
-        outputValue = (inputValue)? inputValue.replace(DOCTO_REGEX,function($0, $1, $2, $3, $4, $5, $6){ return maskValue([$0, $2, $3], shiftValNum) ;}) : inputValue;
+        outputValue = maskValue(inputValue, shiftValNum)
+        // outputValue = (inputValue)? inputValue.replace(DOCTO_REGEX,function($0, $1, $2, $3, $4, $5, $6){ return maskValue([$0, $2, $3], shiftValNum) ;}) : inputValue;
         console.timeEnd("single-execution");
-        // outputValue = (inputValue)? inputValue.replace(DOCTO_REGEX,function($0, $1, $2, $3, $4, $5, $6){ console.log($6) ; return ""}) : inputValue;
         if (typeof resultArr[outputValue] == 'undefined'){
             resultArr[outputValue] = inputValue;
             if (inputValue == outputValue){
