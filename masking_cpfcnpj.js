@@ -1,11 +1,11 @@
 // sm_shift_uni : version 1.5
 // cpf_cnpj : version 1.2 -- created by: david.wells@delphix.com | original cpf/cnpj js code: daniel.stolf@delphix.com | updated by: rafael@delphix.com 
 
-const initialNumStr = "0918273645";
+const initialNumStr = "918273645";
 const charSetNumArr = (initialNumStr + initialNumStr).split("");
 // const CharShift_NumKey  = 1
 // var shiftValNum = parseInt(CharShift_NumKey, 10)+1;
-const numShiftMax = 10
+const numShiftMax = 9
 
 // position specific mapping
 function myShift( a1, a2, a3) {
@@ -231,7 +231,9 @@ function maskValue (inputArray, shift) {
     for (; i < inputArray.length; i++) {
         if ( /^\d+$/.test(inputArray[i]) ) {   
             if (cnt < S) {
-                inputArray[i] = charSetNumArr[myShift(shiftVal, (charSetNumArr.indexOf(inputArray[i])+charSetNumArr.indexOf(previous)) , numShiftMax)];
+                if (inputArray[i]!="0"){
+                    inputArray[i] = charSetNumArr[myShift(shiftVal, (charSetNumArr.indexOf(inputArray[i])+charSetNumArr.indexOf(previous)) , numShiftMax)];
+                }
                 previous="0";
 
                 cnt+=1
@@ -266,7 +268,7 @@ var teste_null;
 inputArray=[
     // ALL ZEROES
     '191',
-    // '000191',
+    '0000191',
     '441978533',
     '00441978533',
     '04541978539',
@@ -274,6 +276,18 @@ inputArray=[
     '40856275972',
     "123.456.789-09",
     "012.345.678-90",
+    "000.005.797-50",
+    "000.045.797-39",
+    "000.005.790-84",
+    "000.045.790-62",
+    "00000802000444",
+    "00000802000606",
+    "00001346000104",
+    "00001366000185",
+    "00.464.646/0001-20"
+    // "5579783",
+    // "1003350046",
+    // "51003350097",
     // "531.042.910-71, 531042910-71 53104291071 531.042.91071 74143033900 741430339-00 74143033-900 42.583.107/0001-50;42.583.107/000150, 425831070001-50,42583107000150 42583107000-150 42583107/0001-50",
 ]
 
