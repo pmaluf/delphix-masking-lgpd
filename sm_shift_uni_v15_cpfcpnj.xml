@@ -611,7 +611,7 @@ else
 var outputValue="";
 //
 var last = null;
-var initialNumStr		= "0918273645";
+const initialNumStr = "918273645";
 var initialLowerCaseStr	= "abcdefghijklmnopqrstuvwxyz";
 var initialUpperCaseStr  = "ZYXWVUTSRQPONMLKJIHGFEDCBA";
 var initialUpperSpecStr  = "ÀÁÂÃÄÅÆÈÉÊËÇÌÍÎÏÑÐŠÒÓÔÕÖŐÙÚÛÜŰÝŸŽ"
@@ -619,7 +619,7 @@ var initialLowerSpecStr  = "àáâãäåæèéêëçìíîïñšòóôõöðùú
 var initialUpperCyrStr  = "AБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ"
 var initialLowerCyrStr  = "Aбвгдежзийклмнопрстуфхцчшщъыьэюя"
 
-var numShiftMax = 10;
+var numShiftMax = 9;
 var lowerShiftMax=26;   //14;
 var upperShiftMax=26;  //21;
 var upperSpecMax=33
@@ -888,7 +888,9 @@ function maskValue (inputArray, shift) {
     for (; i &lt; inputArray.length; i++) {
         if ( /^\d+$/.test(inputArray[i]) ) {   
             if (cnt &lt; S) {
-                inputArray[i] = charSetNumArr[myShift(shiftVal, (charSetNumArr.indexOf(inputArray[i])+charSetNumArr.indexOf(previous)) , numShiftMax)];
+                if (inputArray[i]!="0" ){
+                    inputArray[i] = charSetNumArr[myShift(shiftVal, (charSetNumArr.indexOf(inputArray[i])+charSetNumArr.indexOf(previous)) , numShiftMax)];
+                }
                 previous="0";
 
                 cnt+=1

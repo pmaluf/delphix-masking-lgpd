@@ -231,7 +231,7 @@ function maskValue (inputArray, shift) {
     for (; i < inputArray.length; i++) {
         if ( /^\d+$/.test(inputArray[i]) ) {   
             if (cnt < S) {
-                if (inputArray[i]!="0"){
+                if (inputArray[i]!="0" ){
                     inputArray[i] = charSetNumArr[myShift(shiftVal, (charSetNumArr.indexOf(inputArray[i])+charSetNumArr.indexOf(previous)) , numShiftMax)];
                 }
                 previous="0";
@@ -267,8 +267,10 @@ function maskValue (inputArray, shift) {
 var teste_null; 
 inputArray=[
     // ALL ZEROES
-    '191',
-    '0000191',
+    // '191',
+    // '0000191',
+    '00.000.000/0001-91',
+    '00.000.005/0001-14',
     '441978533',
     '00441978533',
     '04541978539',
@@ -291,7 +293,7 @@ inputArray=[
     // "531.042.910-71, 531042910-71 53104291071 531.042.91071 74143033900 741430339-00 74143033-900 42.583.107/0001-50;42.583.107/000150, 425831070001-50,42583107000150 42583107000-150 42583107/0001-50",
 ]
 
-console.time("total-execution")
+// console.time("total-execution")
 for (CharShift_NumKey = 0; CharShift_NumKey < 10; CharShift_NumKey++){ 
     resultArr = []
     var shiftValNum = parseInt(CharShift_NumKey, 10)+1;
@@ -299,9 +301,9 @@ for (CharShift_NumKey = 0; CharShift_NumKey < 10; CharShift_NumKey++){
     for (j = 0; j < inputArray.length; j++){
         inputValue = inputArray[j]
         // outputValue = maskDocument(inputValue, shiftValNum)
-        console.time("single-execution");
+        // console.time("single-execution");
         outputValue = (inputValue)? inputValue.replace(DOCTO_REGEX,function($0, $1, $2, $3, $4, $5, $6){ return maskValue([$0, $2, $3], shiftValNum) ;}) : inputValue;
-        console.timeEnd("single-execution");
+        // console.timeEnd("single-execution");
         // outputValue = (inputValue)? inputValue.replace(DOCTO_REGEX,function($0, $1, $2, $3, $4, $5, $6){ console.log($6) ; return ""}) : inputValue;
         if (typeof resultArr[outputValue] == 'undefined'){
             resultArr[outputValue] = inputValue;
@@ -326,7 +328,7 @@ for (CharShift_NumKey = 0; CharShift_NumKey < 10; CharShift_NumKey++){
         }
     }
 };
-console.timeEnd("total-execution")
+// console.timeEnd("total-execution")
 
 // // Reeeeeeally overly complicated test to validate all possible CPF documents and check for possible duplicated masked values
 // // Took 1h to test 100M values for shiftVal=1, no duplicate found
