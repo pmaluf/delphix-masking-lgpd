@@ -1,4 +1,4 @@
-# LGPD
+# LATAM Masking Package (LGPD, LPDP)
 
 ## Masking
 
